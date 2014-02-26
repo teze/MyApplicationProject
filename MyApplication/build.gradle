@@ -1,0 +1,125 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.6.+'
+    }
+}
+
+
+apply plugin: 'android'  /*插件类型：android项目=android，java项目=java，android-lib=android-lib*/
+
+/**
+ * 依赖仓库：maven的仓库
+ */
+repositories {
+    mavenCentral()
+}
+
+/**
+ * 依赖配置，即jar文件的引入，有3种方式
+ * 注意：lib不要重复引入
+ */
+
+dependencies {
+    compile 'com.android.support:appcompat-v7:+' /*第一种方式：网络maven仓库下载*/
+    compile project(':MyLibrary')  /*第二种方式：多项目文件，把另一个项目作为lib使用*/
+    compile files('/libs/xx.jar')  /*第三种方式：指定本地某个目录下的jar文件*/
+//    compile fileTree(dir: 'libs', include: '*.jar')//多个文件一起导入
+}
+
+
+android {
+    compileSdkVersion 15   /*编译sdk版本*/
+    buildToolsVersion "18.1.0"  /*构建工具的版本*/
+
+    /**
+     * 默认配置，优先级最低，
+     * 配置优先级 顺序：defaultConfig < productFlavors < buildTypes
+     */
+
+    defaultConfig {build
+        minSdkVersion 7
+        targetSdkVersion 18
+        packageName "com.teze.teze"
+    }
+
+    /**
+     * 签名配置
+     */
+
+    signingConfigs {
+        myConfig {
+            storeFile file("teze.qq.keystore")
+            storePassword "qq"
+            keyAlias "qq"
+            keyPassword "qq"
+        }
+    }
+
+    /**
+     * 构建类型，例如 beta ,release,版本的配置
+     */
+
+    buildTypes {
+        zhCN {
+            debuggable false
+            jniDebugBuild true
+            signingConfig signingConfigs.myConfig
+            runProguard true       //混淆代码控制 :混淆代码配置，默认在SDK目录下
+            proguardFile getDefaultProguardFile('proguard-android.txt')
+        }
+    }
+
+    /**
+     * 渠道配置，例如：配置不同包名的apk
+     */
+    productFlavors {
+        googlePlay {
+            packageName "com.teze.googlePlay"
+            versionCode 20
+            signingConfig signingConfigs.myConfig
+        }
+    }
+
+    /**
+     * 源码组织结构
+     */
+    sourceSets {
+
+        /*main {
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+            java.srcDirs = ['src']
+            resources.srcDirs = ['src']
+            aidl.srcDirs = ['src']
+            renderscript.srcDirs = ['src']
+            res.srcDirs = ['res']
+            assets.srcDirs = ['assets']
+        }*/
+
+        instrumentTest.setRoot('tests')  /* 测试目录*/
+
+        /**
+         *  1.给渠道配置特定的AndroidManifest文件
+         *  2.这个名字 要和 productFlavors下对应的 渠道 名字 一样
+         *  3.编译脚本，会先复制这个文件到googlePlay渠道目录下，然后会进行改包名
+         */
+        googlePlay {
+            manifest.srcFile 'src/manifest/AndroidManifest.xml'
+        }
+    }
+	
+	task nativeLibsToJar(type: Zip, description: 'create a jar archive of the native libs') {
+    destinationDir file("$buildDir/native-libs")
+    baseName 'native-libs'
+    extension 'jar'
+    from fileTree(dir: 'libs', include: '**/*.so')
+    into 'lib/'
+}
+
+tasks.withType(Compile) {
+    compileTask -> compileTask.dependsOn(nativeLibsToJar)
+}
+
+}
